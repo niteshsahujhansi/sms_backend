@@ -22,8 +22,14 @@ class StudentParent(Base):
 class ParentAddress(Base):
     __tablename__ = "parent_addresses"
 
+    id = Column(Integer, primary_key=True, index=True , autoincrement=True)
     parent_id = Column(Integer, ForeignKey("parents.id"), primary_key=True)
     address_id = Column(Integer, ForeignKey("addresses.id"), primary_key=True)
+    address_type = Column(String, nullable=False)
+
+    parent = relationship("Parent", back_populates="addresses")
+    address = relationship("Address", back_populates="parents")
+
 
 class Address(Base):
     __tablename__ = "addresses"
@@ -37,7 +43,8 @@ class Address(Base):
     zip_code = Column(String, nullable=False)
     country = Column(String, nullable=False)
 
-    parents = relationship("Parent", secondary="parent_addresses", back_populates="addresses")
+    parents = relationship("ParentAddress", back_populates="address")
+
 
 class Parent(Base):
     __tablename__ = "parents"
@@ -46,15 +53,13 @@ class Parent(Base):
     first_name = Column(String, nullable=False)
     middle_name = Column(String, nullable=True)
     last_name = Column(String, nullable=True)
-    # date_of_birth = Column(Date, nullable=True)
     date_of_birth = Column(String, nullable=True)
     gender = Column(String, nullable=True)
     blood_group = Column(String, nullable=True)
     nationality = Column(String, nullable=True)
     religion = Column(String, nullable=True)
-    caste_category = Column(String, nullable=False)  # Required field
+    caste_category = Column(String, nullable=True)
 
-    # Contact Information
     phone = Column(String, nullable=True)
     email = Column(String, nullable=True)
     emergency_contact_name = Column(String, nullable=True)
@@ -77,14 +82,11 @@ class Parent(Base):
     preferred_language = Column(String, nullable=True)
     communication_preference = Column(String, nullable=True)
 
-    addresses = relationship("Address", secondary="parent_addresses", back_populates="parents")
-
     students = relationship("Student", secondary="student_parents", back_populates="parents", viewonly=True)
     student_associations  = relationship("StudentParent", back_populates="parent")
 
+    addresses = relationship("ParentAddress", back_populates="parent", cascade="all, delete-orphan")
 
-
-    
 
 class Student(Base):
     __tablename__ = "students"
@@ -137,8 +139,6 @@ class Student(Base):
     parents = relationship("Parent", secondary="student_parents", back_populates="students", viewonly=True)
 
 
-
-
 class MedicalDetail(Base):
     __tablename__ = "medical_details"
 
@@ -169,9 +169,6 @@ class TransportDetail(Base):
 
 class User(Base):
     __tablename__ = "users"
-    # __table_args__ = (
-    #     {'schema': 'demo'}
-    # )
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, nullable=False)
@@ -179,17 +176,3 @@ class User(Base):
     hashed_password = Column(String, nullable=False)  # Secure password storage
     role = Column(String, nullable=False)  # admin, teacher, student
     is_active = Column(Boolean, default=True)
-
-
-
-
-# class ParentAddress(Base):
-#     __tablename__ = "parent_addresses"
-
-#     id = Column(Integer, primary_key=True, index=True)
-#     parent_id = Column(Integer, ForeignKey("parents.id", ondelete="CASCADE"), nullable=False)
-#     address_id = Column(Integer, ForeignKey("addresses.id", ondelete="CASCADE"), nullable=False)
-#     address_type = Column(String, nullable=False)  # E.g., "Home", "Work", "Temporary"
-
-#     parent = relationship("Parent", back_populates="address_associations")
-#     address = relationship("Address", back_populates="parent_associations")

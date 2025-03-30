@@ -41,38 +41,23 @@ class ParentBase(CamelCaseModel):
     preferred_language: Optional[str] = None
     communication_preference: Optional[str] = None
 
+
+class ParentAddressCreate(BaseModel):
+    address_type: str
+    address: AddressCreate
+
+
 class ParentCreate(ParentBase):
-    addresses: list[AddressCreate] = None  # Nested Address object
+    addresses: Optional[List[ParentAddressCreate]]
+
 
 class ParentUpdate(ParentBase):
-    address: list[AddressCreate] = None  # Optional for updating
+    addresses: Optional[List[ParentAddressCreate]] = []
+
 
 class ParentResponse(ParentBase):
     id: int
-    # address: list[AddressResponse] = None  # Include Address in response
+    addresses: Optional[List[ParentAddressCreate]]
 
     class Config:
-        from_attributes = True  # ORM mode for SQLAlchemy
-
-    # class Config:
-    #     orm_mode = True  # Enables ORM to Pydantic conversion
-    #     alias_generator = lambda x: ''.join([x[0].lower()] + [y.capitalize() for y in x.split('_')[1:]])  
-    #     populate_by_name = True  # Allows using both snake_case & camelCase
-
-    # class Config:
-    #     alias_generator = lambda x: ''.join([x[0].lower()] + [y.capitalize() for y in x.split('_')[1:]])
-    #     populate_by_name = True
-    
-    # class Config:
-    #     alias_generator = lambda x: ''.join([x[0].lower(), x.title()[1:]])  # Auto-convert to camelCase
-    #     allow_population_by_field_name = True
-
-
-
-    # class Config:
-    #     alias_generator = lambda s: ''.join([s.split('_')[0]] + [w.capitalize() for w in s.split('_')[1:]])  # Converts to camelCase
-    #     populate_by_name = True
-
-    # class Config:
-    #     alias_generator = lambda s: ''.join([s.split('_')[0]] + [w.capitalize() for w in s.split('_')[1:]])
-    #     populate_by_name = True
+        from_attributes = True

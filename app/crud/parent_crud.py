@@ -11,6 +11,135 @@ class ParentCRUD(CRUDBase[Parent, ParentCreate]):
         super().__init__(Parent, db)  # Pass db to the base class
 
     def create(self, obj_in: ParentCreate):
+        try:
+            # Extract addresses from input
+            address_data = obj_in.addresses  # List of address objects
+            
+            new_addresses = []
+            linked_addresses = []
+            parent_address_associations = []  # To store ParentAddress objects
+
+            if address_data:
+                for addr_data in address_data:
+                    address_type = addr_data.address_type
+                    addr = addr_data.address  # Extract address fields
+                    
+                    # Check if the same address exists
+                    existing_address = (
+                        self.db.query(Address)
+                        .filter(
+                            Address.house_no == addr.house_no,
+                            Address.street_address == addr.street_address,
+                            Address.landmark == addr.landmark,
+                            Address.city == addr.city,
+                            Address.state == addr.state,
+                            Address.zip_code == addr.zip_code,
+                            Address.country == addr.country
+                        )
+                        .first()
+                    )
+
+                    if existing_address:
+                        address = existing_address  # Use existing address
+                    else:
+                        address = Address(**addr.model_dump())
+                        self.db.add(address)
+                        new_addresses.append(address)
+
+                    self.db.flush()  # Ensure new addresses get an ID
+                    
+                    # Create ParentAddress entry
+                    parent_address = ParentAddress(
+                        address_id=address.id,  # ✅ Corrected: Use address_id, not address
+                        address_type=address_type
+                    )
+                    parent_address_associations.append(parent_address)
+
+            # Create Parent (excluding addresses)
+            parent = Parent(**obj_in.model_dump(exclude={"addresses"}))
+
+            # Commit parent first to get the ID
+            self.db.add(parent)
+            self.db.flush()
+
+            # Link addresses to the parent
+            for pa in parent_address_associations:
+                pa.parent_id = parent.id  # Assign parent ID after creation
+                self.db.add(pa)
+
+            self.db.commit()
+            self.db.refresh(parent)
+            return parent
+
+        # except IntegrityError:
+        #     self.db.rollback()
+        #     raise HTTPException(status_code=400, detail="Database integrity error.")
+        except Exception as e:
+            self.db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+
+    def update(self, parent_id: int, obj_in: ParentUpdate):
+        try:
+            parent = self.db.query(Parent).filter(Parent.id == parent_id).first()
+            if not parent:
+                raise HTTPException(status_code=404, detail="Parent not found")
+
+            # Update parent details
+            update_data = obj_in.model_dump(exclude_unset=True, exclude={"addresses"})
+            for key, value in update_data.items():
+                setattr(parent, key, value)
+
+            # Handle address updates
+            if obj_in.addresses:
+                existing_addresses = {pa.address_id: pa for pa in parent.addresses}
+
+                for addr_data in obj_in.addresses:
+                    address_type = addr_data.address_type
+                    addr = addr_data.address
+
+                    # Check if the same address exists
+                    existing_address = (
+                        self.db.query(Address)
+                        .filter(
+                            Address.house_no == addr.house_no,
+                            Address.street_address == addr.street_address,
+                            Address.landmark == addr.landmark,
+                            Address.city == addr.city,
+                            Address.state == addr.state,
+                            Address.zip_code == addr.zip_code,
+                            Address.country == addr.country
+                        )
+                        .first()
+                    )
+
+                    if existing_address:
+                        address = existing_address
+                    else:
+                        address = Address(**addr.model_dump())
+                        self.db.add(address)
+                        self.db.flush()
+
+                    # Update or create ParentAddress entry
+                    if address.id in existing_addresses:
+                        existing_pa = existing_addresses[address.id]
+                        existing_pa.address_type = address_type  # Update type if needed
+                    else:
+                        new_pa = ParentAddress(parent_id=parent.id, address_id=address.id, address_type=address_type)
+                        self.db.add(new_pa)
+
+            self.db.commit()
+            self.db.refresh(parent)
+            return parent
+
+        except IntegrityError:
+            self.db.rollback()
+            raise HTTPException(status_code=400, detail="Database integrity error.")
+        except Exception as e:
+            self.db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+
+
+    def create_without_manytomany(self, obj_in: ParentCreate):
         # Extract addresses from input
         address_data = obj_in.addresses  # List of addresses
 
@@ -54,7 +183,7 @@ class ParentCRUD(CRUDBase[Parent, ParentCreate]):
         self.db.refresh(parent)
         return parent
 
-    def update(self, parent_id: int, obj_in: ParentUpdate):
+    def update_old(self, parent_id: int, obj_in: ParentUpdate):
         db_parent = self.db.query(Parent).filter(Parent.id == parent_id).first()
         if not db_parent:
             raise HTTPException(status_code=404, detail="Parent not found")
