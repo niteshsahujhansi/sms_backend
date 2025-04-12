@@ -42,22 +42,22 @@ class ParentBase(CamelCaseModel):
     communication_preference: Optional[str] = None
 
 
-class ParentAddressCreate(BaseModel):
+class PersonAddressCreate(BaseModel):
     address_type: str
     address: AddressCreate
 
 
 class ParentCreate(ParentBase):
-    addresses: Optional[List[ParentAddressCreate]]
+    addresses: Optional[List[PersonAddressCreate]]
 
 
 class ParentUpdate(ParentBase):
-    addresses: Optional[List[ParentAddressCreate]] = []
+    addresses: Optional[List[PersonAddressCreate]] = []
 
 
 class ParentResponse(ParentBase):
     id: int
-    addresses: Optional[List[ParentAddressCreate]]
+    addresses: Optional[List[PersonAddressCreate]]
 
     class Config:
         from_attributes = True

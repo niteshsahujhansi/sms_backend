@@ -1,5 +1,5 @@
 from crud.base_crud import CRUDBase
-from models.model import Student, Parent, StudentParent
+from models.model import Student, Parent, StudentParent, PersonAddress, Address
 from schemas.student import StudentCreate, StudentUpdate
 from sqlalchemy.orm import Session, joinedload
 # from core.exceptions import APIException
@@ -9,7 +9,7 @@ class StudentCRUD(CRUDBase[Student, StudentCreate]):
     def __init__(self, db: Session):
         super().__init__(Student, db)  # Pass db to the base class
     
-    def create(self, obj_in: StudentCreate):
+    def createe(self, obj_in: StudentCreate):
         # Extract parent IDs & relationships from the payload
         parent_relationships = {p.id: p.relationship for p in obj_in.parent_data}
         parent_ids = list(parent_relationships.keys())  
@@ -35,6 +35,65 @@ class StudentCRUD(CRUDBase[Student, StudentCreate]):
         self.db.commit()
         self.db.refresh(student)
         return student
+
+    def create(self, obj_in: StudentCreate):
+        # Extract parent IDs & relationships from the payload
+        parent_relationships = {p.id: p.relationship for p in obj_in.parent_data}
+        parent_ids = list(parent_relationships.keys())  
+
+        # Fetch existing parents
+        existing_parents = self.db.query(Parent).filter(Parent.id.in_(parent_ids)).all()
+        if len(existing_parents) != len(parent_ids):
+            raise HTTPException(status_code=400, detail="Some parent IDs do not exist.")
+
+        # Create Student (excluding parent_data and address_data)
+        student_data = obj_in.model_dump(exclude={"parent_data", "address_data"})
+        student = Student(**student_data)
+
+        # Assign parents through the association table
+        associations = [
+            StudentParent(parent_id=parent.id, relationship_type=parent_relationships[parent.id])
+            for parent in existing_parents
+        ]
+        student.parent_associations.extend(associations)  # ✅ Corrected Relationship Assignment
+
+        # ✅ Handle Addresses
+        addresses = []
+        if obj_in.address_data:
+            for address_entry in obj_in.address_data:
+                address_details = address_entry.address  # ✅ Extracting nested `address` fields
+
+                # Check if address already exists (Optional)
+                address = self.db.query(Address).filter_by(
+                    house_no=address_details.house_no,
+                    street_address=address_details.street_address,
+                    city=address_details.city,
+                    state=address_details.state,
+                    zip_code=address_details.zip_code,
+                    country=address_details.country
+                ).first()
+
+                if not address:
+                    address_data = address_details.model_dump()
+                    address = Address(**address_data)
+                    self.db.add(address)
+                    self.db.flush()  # ✅ Ensures Address ID is generated
+
+                # Create StudentAddress relationship
+                student_address = PersonAddress(
+                    student=student,
+                    address=address,
+                    address_type=address_entry.address_type  # ✅ Linking address_type properly
+                )
+                addresses.append(student_address)
+
+        student.addresses.extend(addresses)  # ✅ Associate Addresses
+
+        self.db.add(student)
+        self.db.commit()
+        self.db.refresh(student)
+        return student
+
 
     def update(self, student_id: int, obj_in: StudentUpdate):
         """Update student details and their parent relationships."""

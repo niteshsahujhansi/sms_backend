@@ -1,13 +1,14 @@
 from pydantic import BaseModel, EmailStr, Field 
+from typing import List, Optional, Union
 from uuid import UUID
 
-
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List
-from datetime import date
+from datetime import date, datetime
 
 from schemas.parent import ParentResponse
-from schemas.common_schemas import CamelCaseModel
+from schemas.common_schemas import CamelCaseModel,  AddressBase
+
+from utils.constants import FileCategoryEnum, FileTypeEnum, RelatedEntityEnum, UserRoleEnum, VirusScanStatusEnum, FileStatusEnum
+
 
 class MedicalDetailBase(CamelCaseModel):
     medical_conditions: Optional[str] = None
@@ -43,7 +44,7 @@ class StudentBase(CamelCaseModel):
     religion: Optional[str] = None
     phone_number: Optional[str] = None
     email: Optional[EmailStr] = None
-    home_address: Optional[str] = None
+    # home_address: Optional[str] = None
 
     # Contact Information
     emergency_contact_name: Optional[str] = None
@@ -72,10 +73,16 @@ class ParentData(CamelCaseModel):
     id: int
     relationship: str
 
+class AddressData(CamelCaseModel):
+    address_type: str  # "Current" or "Permanent"
+    address: AddressBase
+
 class StudentCreate(StudentBase):
     # relationship: str  # Ensure this is required
     # parent_ids: List[int] = []  # List of existing parent IDs
     parent_data: Optional[List[ParentData]] = None  # Update to accept relationships
+    address_data: Optional[List[AddressData]] = None
+    # address_data: Optional[List[AddressData]] = []
 
 class StudentUpdate(StudentBase):
     parent_data: Optional[List[ParentData]] = None

@@ -1,10 +1,15 @@
 from core.database import Base
 import uuid
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 
-from sqlalchemy import Column, Integer, String, ForeignKey, Date, Boolean, Text, Float
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, Text, JSON, Enum, BigInteger
+
 from sqlalchemy.orm import relationship, Mapped
 from typing import List, Optional
+from sqlalchemy.sql import func
+from utils.constants import RelatedEntityEnum, FileCategoryEnum, FileTypeEnum, UserRoleEnum, FileStatusEnum, VirusScanStatusEnum
+
+
 
 
 class StudentParent(Base):
@@ -19,16 +24,18 @@ class StudentParent(Base):
     parent = relationship("Parent", back_populates="student_associations")
 
 
-class ParentAddress(Base):
+class PersonAddress(Base):
     __tablename__ = "parent_addresses"
 
     id = Column(Integer, primary_key=True, index=True , autoincrement=True)
-    parent_id = Column(Integer, ForeignKey("parents.id"), primary_key=True)
+    parent_id = Column(Integer, ForeignKey("parents.id"), nullable=True)
+    student_id = Column(Integer, ForeignKey("students.id"), nullable=True)
     address_id = Column(Integer, ForeignKey("addresses.id"), primary_key=True)
     address_type = Column(String, nullable=False)
 
+    address = relationship("Address", back_populates="persons")
     parent = relationship("Parent", back_populates="addresses")
-    address = relationship("Address", back_populates="parents")
+    student = relationship("Student", back_populates="addresses")
 
 
 class Address(Base):
@@ -43,7 +50,7 @@ class Address(Base):
     zip_code = Column(String, nullable=False)
     country = Column(String, nullable=False)
 
-    parents = relationship("ParentAddress", back_populates="address")
+    persons = relationship("PersonAddress", back_populates="address")
 
 
 class Parent(Base):
@@ -85,7 +92,7 @@ class Parent(Base):
     students = relationship("Student", secondary="student_parents", back_populates="parents", viewonly=True)
     student_associations  = relationship("StudentParent", back_populates="parent")
 
-    addresses = relationship("ParentAddress", back_populates="parent", cascade="all, delete-orphan")
+    addresses = relationship("PersonAddress", back_populates="parent", cascade="all, delete-orphan")
 
 
 class Student(Base):
@@ -102,12 +109,12 @@ class Student(Base):
     blood_group = Column(String, nullable=True)
     nationality = Column(String, nullable=True)
     religion = Column(String, nullable=True)
-    caste_category = Column(String, nullable=False)  # Required field
+    caste_category = Column(String, nullable=False)
     
     # Contact Information
     phone_number = Column(String, nullable=True)
     email = Column(String, nullable=True)
-    home_address = Column(Text, nullable=True)
+    # home_address = Column(Text, nullable=True)
     emergency_contact_name = Column(String, nullable=True)
     emergency_contact_phone = Column(String, nullable=True)
     emergency_contact_relationship = Column(String, nullable=True)
@@ -138,6 +145,8 @@ class Student(Base):
     parent_associations = relationship("StudentParent", back_populates="student", cascade="all, delete-orphan")
     parents = relationship("Parent", secondary="student_parents", back_populates="students", viewonly=True)
 
+    addresses = relationship("PersonAddress", back_populates="student", cascade="all, delete-orphan")
+
 
 class MedicalDetail(Base):
     __tablename__ = "medical_details"
@@ -151,6 +160,7 @@ class MedicalDetail(Base):
     health_insurance_details = Column(String, nullable=True)
 
     student = relationship("Student", back_populates="medical_details")
+
 
 class TransportDetail(Base):
     __tablename__ = "transport_details"
@@ -176,3 +186,45 @@ class User(Base):
     hashed_password = Column(String, nullable=False)  # Secure password storage
     role = Column(String, nullable=False)  # admin, teacher, student
     is_active = Column(Boolean, default=True)
+
+
+class Upload(Base):
+    __tablename__ = "upload"
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(UUID(as_uuid=True), default=uuid.uuid4, unique=True, nullable=False, index=True)
+    
+    original_filename = Column(String) # when download give actuall filename
+    file_extension = Column(String) # 1-Fast Filtering & Searching, 2-UI/UX Use Cases, 3-/images/, /docs/, 4-Cleaner Reporting
+    content_type = Column(String)
+    file_size = Column(BigInteger) # 1-Show file size in the UI, 2-Validate or Filter on File Size, Quota Tracking / Limit Enforcing (SUM(file_size) for a user)
+    checksum = Column(String)  # SHA256/MD5 (optional)
+    storage_path = Column(String, nullable=False)
+    file_category = Column(Enum(FileCategoryEnum), default=FileCategoryEnum.miscellaneous)
+    file_type = Column(Enum(FileTypeEnum), nullable=False, default=FileTypeEnum.other)
+    url = Column(Text, nullable=True)
+    expiry_at = Column(DateTime, nullable=True)
+    
+    is_private = Column(Boolean, default=True)
+    status = Column(Enum(FileStatusEnum), default=FileStatusEnum.archived)
+    virus_scan_status = Column(Enum(VirusScanStatusEnum), default=VirusScanStatusEnum.pending)
+    
+    related_entity = Column(Enum(RelatedEntityEnum), default=RelatedEntityEnum.unknown)
+    related_entity_id = Column(Integer, nullable=True, index=True)
+    related_entity_role = Column(Enum(UserRoleEnum), default=UserRoleEnum.unknown)
+
+    is_active = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)
+
+    uploaded_by_id = Column(UUID(as_uuid=True))
+    uploaded_by_role = Column(Enum(UserRoleEnum), default=UserRoleEnum.unknown)
+    uploaded_at = Column(DateTime, server_default=func.now())
+    
+    updated_by_id = Column(UUID(as_uuid=True))
+    updated_by_role = Column(Enum(UserRoleEnum), default=UserRoleEnum.unknown)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # tags = Column(ARRAY(String))
+    # metadata = Column(JSONB)
+
+    # app.mount("/static", StaticFiles(directory="uploads"), name="static")
