@@ -11,11 +11,11 @@ class UploadCRUD(CRUDBase[Upload, UploadCreate]):
     def create_upload_record(self, obj_in: UploadCreate):
         try:
             file_record = Upload(**obj_in.model_dump())
-            self.db.add(file_record)
-            self.db.commit()
-            self.db.refresh(file_record)
+            self.session.add(file_record)
+            self.session.commit()
+            self.session.refresh(file_record)
             return file_record
         except SQLAlchemyError as e:
-            self.db.rollback()  # Rollback the transaction
+            self.session.rollback()  # Rollback the transaction
             raise Exception(f"Error creating upload record: {str(e)}")
 

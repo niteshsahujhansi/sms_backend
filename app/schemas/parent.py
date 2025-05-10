@@ -36,7 +36,7 @@ class ParentBase(CamelCaseModel):
     PAN_number: Optional[str] = None
     annual_income: Optional[str] = None
 
-    photo: Optional[str] = None
+    # photo: Optional[str] = None
     notes: Optional[str] = None
     preferred_language: Optional[str] = None
     communication_preference: Optional[str] = None

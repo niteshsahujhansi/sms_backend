@@ -1,5 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
+from utils.constants import RoleEnum
+from uuid import UUID
 
 class CamelCaseModel(BaseModel):
     """Base model with camelCase conversion and ORM support."""
@@ -28,3 +30,11 @@ class AddressResponse(AddressBase):
 
     class Config:
         from_attributes = True
+
+class UserToken(BaseModel):
+    id: UUID
+    tenant_id: int
+    username: str
+    role: RoleEnum
+
+    model_config = {"from_attributes": True}  # ✅ required for ORM support

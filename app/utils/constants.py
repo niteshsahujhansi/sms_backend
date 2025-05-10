@@ -107,3 +107,8 @@ class FileExtensionEnum(str, Enum):
     mp4 = "mp4"
     zip = "zip"
     unknown = "unknown"
+
+class RoleEnum(str, Enum):
+    admin = "admin"
+    teacher = "teacher"
+    student = "student"

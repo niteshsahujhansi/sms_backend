@@ -1,36 +1,44 @@
-from fastapi import Depends, HTTPException, Request, status
-from itsdangerous import URLSafeSerializer, BadSignature
-from core.database import get_db
-from models.model import User
+from fastapi import Depends, HTTPException, status, Cookie
 from sqlalchemy.orm import Session
+from typing import Optional
+from models.model import UserMaster
+from schemas.common_schemas import UserToken
+from crud.base_crud import CRUDBase
+from utils.security import verify_access_token
 
-SECRET_KEY = "your-secret-key"  # Use the same key as in login
-serializer = URLSafeSerializer(SECRET_KEY)
+# def get_user_master_crud():
+#     return CRUDBase()
 
-def get_current_user(request: Request, db: Session = Depends(get_db)):
-    session_token = request.cookies.get("session")
+async def get_current_user(access_token: Optional[str] = Cookie(None)) -> UserToken:
+    if access_token is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing access token")
 
-    if not session_token:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+    payload = verify_access_token(access_token)
+    if payload is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
 
-    try:
-        session_data = serializer.loads(session_token)
-        user_id = session_data.get("user_id")
-    except BadSignature:
-        raise HTTPException(status_code=401, detail="Invalid session token")
+    user_id: int = payload.get("sub")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token missing subject (sub)")
 
-    user = db.query(User).filter(User.id == user_id).first()
+    user_master_crud = CRUDBase(UserMaster)
+    user = user_master_crud.get_by_id(obj_id=user_id)
+    # user = db.query(UserMaster).filter(UserMaster.id == user_id).first()
     if not user:
-        raise HTTPException(status_code=401, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
 
-    return user  # Return the authenticated user object
+    # Map ORM model to schema
+    return UserToken.model_validate(user)
 
-def require_role(required_role: str):
-    def role_dependency(user=Depends(get_current_user)):
-        if user.role != required_role:
+def require_roles(*roles: str):
+    def role_guard(UserToken: UserToken = Depends(get_current_user)) -> UserToken:
+        if UserToken.role not in roles:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Required roles: {', '.join(roles)}"
             )
-        return user  # ✅ Now we return the user object
-    return role_dependency
+        return UserToken
+    return role_guard
+
+
 

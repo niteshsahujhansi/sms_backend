@@ -6,35 +6,9 @@ from sqlalchemy.orm import Session, joinedload
 from fastapi import HTTPException
 
 class StudentCRUD(CRUDBase[Student, StudentCreate]):
+
     def __init__(self, db: Session):
         super().__init__(Student, db)  # Pass db to the base class
-    
-    def createe(self, obj_in: StudentCreate):
-        # Extract parent IDs & relationships from the payload
-        parent_relationships = {p.id: p.relationship for p in obj_in.parent_data}
-        parent_ids = list(parent_relationships.keys())  
-
-        # Fetch existing parents
-        existing_parents = self.db.query(Parent).filter(Parent.id.in_(parent_ids)).all()
-        if len(existing_parents) != len(parent_ids):
-            raise HTTPException(status_code=400, detail="Some parent IDs do not exist.")
-
-        # Create Student (excluding parent_data)
-        student_data = obj_in.model_dump(exclude={"parent_data"})
-        student = Student(**student_data)
-
-        # Assign parents through the association table
-        associations = [
-            StudentParent(parent_id=parent.id, relationship_type=parent_relationships[parent.id])
-            for parent in existing_parents
-        ]
-        
-        student.parent_associations.extend(associations)  # ✅ Corrected Relationship Assignment
-
-        self.db.add(student)
-        self.db.commit()
-        self.db.refresh(student)
-        return student
 
     def create(self, obj_in: StudentCreate):
         # Extract parent IDs & relationships from the payload
@@ -42,7 +16,7 @@ class StudentCRUD(CRUDBase[Student, StudentCreate]):
         parent_ids = list(parent_relationships.keys())  
 
         # Fetch existing parents
-        existing_parents = self.db.query(Parent).filter(Parent.id.in_(parent_ids)).all()
+        existing_parents = self.session.query(Parent).filter(Parent.id.in_(parent_ids)).all()
         if len(existing_parents) != len(parent_ids):
             raise HTTPException(status_code=400, detail="Some parent IDs do not exist.")
 
@@ -64,7 +38,7 @@ class StudentCRUD(CRUDBase[Student, StudentCreate]):
                 address_details = address_entry.address  # ✅ Extracting nested `address` fields
 
                 # Check if address already exists (Optional)
-                address = self.db.query(Address).filter_by(
+                address = self.session.query(Address).filter_by(
                     house_no=address_details.house_no,
                     street_address=address_details.street_address,
                     city=address_details.city,
@@ -76,8 +50,8 @@ class StudentCRUD(CRUDBase[Student, StudentCreate]):
                 if not address:
                     address_data = address_details.model_dump()
                     address = Address(**address_data)
-                    self.db.add(address)
-                    self.db.flush()  # ✅ Ensures Address ID is generated
+                    self.session.add(address)
+                    self.session.flush()  # ✅ Ensures Address ID is generated
 
                 # Create StudentAddress relationship
                 student_address = PersonAddress(
@@ -89,15 +63,14 @@ class StudentCRUD(CRUDBase[Student, StudentCreate]):
 
         student.addresses.extend(addresses)  # ✅ Associate Addresses
 
-        self.db.add(student)
-        self.db.commit()
-        self.db.refresh(student)
+        self.session.add(student)
+        self.session.commit()
+        self.session.refresh(student)
         return student
-
 
     def update(self, student_id: int, obj_in: StudentUpdate):
         """Update student details and their parent relationships."""
-        db_student = self.db.query(Student).filter(Student.id == student_id).first()
+        db_student = self.session.query(Student).filter(Student.id == student_id).first()
         
         if not db_student:
             raise HTTPException(status_code=404, detail="Student not found")
@@ -113,26 +86,26 @@ class StudentCRUD(CRUDBase[Student, StudentCreate]):
             new_parent_ids = set(new_parent_relationships.keys())
 
             # Fetch existing parents
-            existing_parents = self.db.query(Parent).filter(Parent.id.in_(new_parent_ids)).all()
+            existing_parents = self.session.query(Parent).filter(Parent.id.in_(new_parent_ids)).all()
             if len(existing_parents) != len(new_parent_ids):
                 raise HTTPException(status_code=400, detail="Some parent IDs do not exist.")
 
             # Clear old relationships and set new ones
-            self.db.query(StudentParent).filter(StudentParent.student_id == student_id).delete()
+            self.session.query(StudentParent).filter(StudentParent.student_id == student_id).delete()
             new_associations = [
                 StudentParent(parent_id=parent.id, relationship_type=new_parent_relationships[parent.id])
                 for parent in existing_parents
             ]
             db_student.parent_associations.extend(new_associations)
 
-        self.db.commit()
-        self.db.refresh(db_student)
+        self.session.commit()
+        self.session.refresh(db_student)
         return db_student
 
     def get_by_id(self, student_id: int):
         """Retrieve a student by ID, including parents and relationship details."""
         student = (
-            self.db.query(Student)
+            self.session.query(Student)
             .options(joinedload(Student.parent_associations).joinedload(StudentParent.parent))
             .filter(Student.id == student_id)
             .first()
@@ -144,11 +117,5 @@ class StudentCRUD(CRUDBase[Student, StudentCreate]):
         return student
 
     def read_students_by_grade(self, grade: int):
-        return self.db.query(self.model).filter(self.model.grade == grade).all()
+        return self.session.query(self.model).filter(self.model.grade == grade).all()
 
-
-from core.database import get_db
-from fastapi import Depends
-
-def get_student_crud(db: Session = Depends(get_db)):
-    return StudentCRUD(db)

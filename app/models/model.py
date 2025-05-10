@@ -2,15 +2,17 @@ from core.database import Base
 import uuid
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 
-from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, Text, JSON, Enum, BigInteger
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, Text, JSON, Enum, BigInteger, text
 
-from sqlalchemy.orm import relationship, Mapped
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import List, Optional
 from sqlalchemy.sql import func
 from utils.constants import RelatedEntityEnum, FileCategoryEnum, FileTypeEnum, UserRoleEnum, FileStatusEnum, VirusScanStatusEnum
 
 
-
+# Enum for Gender / Blood Group / Caste:
+# remove nulable true 
+# Use RS256 (RSA keypair):
 
 class StudentParent(Base):
     __tablename__ = "student_parents"
@@ -30,7 +32,8 @@ class PersonAddress(Base):
     id = Column(Integer, primary_key=True, index=True , autoincrement=True)
     parent_id = Column(Integer, ForeignKey("parents.id"), nullable=True)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=True)
-    address_id = Column(Integer, ForeignKey("addresses.id"), primary_key=True)
+    # address_id = Column(Integer, ForeignKey("addresses.id"), primary_key=True)
+    address_id = Column(Integer, ForeignKey("addresses.id"), nullable=False)
     address_type = Column(String, nullable=False)
 
     address = relationship("Address", back_populates="persons")
@@ -68,7 +71,7 @@ class Parent(Base):
     caste_category = Column(String, nullable=True)
 
     phone = Column(String, nullable=True)
-    email = Column(String, nullable=True)
+    email = Column(String, unique=True)
     emergency_contact_name = Column(String, nullable=True)
     emergency_contact_phone = Column(String, nullable=True)
     emergency_contact_relationship = Column(String, nullable=True)
@@ -76,7 +79,7 @@ class Parent(Base):
     occupation = Column(String, nullable=True)
     designation = Column(String, nullable=True)
     company_name = Column(String, nullable=True)
-    annual_income = Column(String, nullable=True)
+    # annual_income = Column(String, nullable=True)
 
     aadhaar_number = Column(String, nullable=True)
     passport_number = Column(String, nullable=True)
@@ -113,7 +116,7 @@ class Student(Base):
     
     # Contact Information
     phone_number = Column(String, nullable=True)
-    email = Column(String, nullable=True)
+    email = Column(String, unique=True)
     # home_address = Column(Text, nullable=True)
     emergency_contact_name = Column(String, nullable=True)
     emergency_contact_phone = Column(String, nullable=True)
@@ -177,17 +180,6 @@ class TransportDetail(Base):
     student = relationship("Student", back_populates="transport_details")
 
 
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, nullable=False)
-    email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)  # Secure password storage
-    role = Column(String, nullable=False)  # admin, teacher, student
-    is_active = Column(Boolean, default=True)
-
-
 class Upload(Base):
     __tablename__ = "upload"
 
@@ -228,3 +220,44 @@ class Upload(Base):
     # metadata = Column(JSONB)
 
     # app.mount("/static", StaticFiles(directory="uploads"), name="static")
+
+
+class Tenant_db_Master(Base):
+    __tablename__ = "tenant_db_master"
+
+    id = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=func.uuid_generate_v4(), index=True, nullable=False)
+    tenant_id = mapped_column(Integer, nullable=False)
+    db_user = mapped_column(String, unique=True, nullable=False)
+    db_password = mapped_column(String, unique=True, nullable=False)
+    db_host = mapped_column(String, unique=True, nullable=False)
+    db_port = mapped_column(String, unique=True, nullable=False)
+    db_name = mapped_column(String, unique=True, nullable=False)
+
+
+class UserMaster(Base):
+    __tablename__ = "user_master"
+    
+    id = mapped_column(UUID(as_uuid=True), primary_key=True, server_default=func.uuid_generate_v4(), index=True, nullable=False)
+    tenant_id = mapped_column(Integer, nullable=False)
+    username = mapped_column(String, unique=True, index=True, nullable=False)
+    email = mapped_column(String, unique=True, index=True, nullable=False)
+    hashed_password = mapped_column(String, nullable=False)
+    role = mapped_column(String, nullable=False)
+    salt = mapped_column(String(256), nullable=False)
+    force_password = mapped_column(Boolean, server_default=text('true'), nullable=False)
+    is_mfa = mapped_column(Boolean, server_default=text('true'), nullable=False)
+    is_sso = mapped_column(Boolean, server_default=text('false'), nullable=False)
+    otp = mapped_column(String(10))
+    otp_expiry = mapped_column(DateTime)
+    failed_login_attempts = mapped_column(Integer, server_default=text('0'), nullable=False)
+    is_account_lock = mapped_column(Boolean, server_default=text('false'), nullable=False)
+    locked_until = mapped_column(DateTime)
+    last_login_at = mapped_column(DateTime)
+    last_password_changed_at = mapped_column(DateTime)
+    last_passwords = mapped_column(ARRAY(String), nullable=True)
+    is_active = mapped_column(Boolean, server_default=text('true'), nullable=False)
+    is_deleted = mapped_column(Boolean, server_default=text('false'), nullable=False)
+    created_at = mapped_column(DateTime, server_default=func.now(), nullable=False)
+    created_by = mapped_column(String(512))
+    updated_at = mapped_column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+    updated_by = mapped_column(String(512))
