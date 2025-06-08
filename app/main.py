@@ -12,7 +12,7 @@ init_db()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Update this for security
+    allow_origins=["http://localhost:3000"],  # Update this for security
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,4 +25,4 @@ app.include_router(upload_router, prefix="/upload", tags=["upload"])
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    uvicorn.run("main:app", host="localhost", port=8000, reload=True)

@@ -1,5 +1,5 @@
 from passlib.context import CryptContext
-from jose import JWTError, jwt
+from jose import JWTError, jwt, ExpiredSignatureError
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import HTTPException, status
@@ -32,6 +32,11 @@ def verify_access_token(token: str) -> Optional[dict]:
         # Return payload if the token is valid
         return payload
     
+    except ExpiredSignatureError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has expired"
+        ) from e
     except JWTError as e:
         # Catch JWT-specific exceptions (e.g., invalid signature)
         raise HTTPException(

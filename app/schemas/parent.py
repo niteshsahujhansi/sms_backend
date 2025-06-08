@@ -50,6 +50,10 @@ class PersonAddressCreate(BaseModel):
 class ParentCreate(ParentBase):
     addresses: Optional[List[PersonAddressCreate]]
 
+# class ParentResponseMessage(CamelCaseModel):
+class ParentResponseMessage(BaseModel):
+    id: int
+    message: str
 
 class ParentUpdate(ParentBase):
     addresses: Optional[List[PersonAddressCreate]] = []

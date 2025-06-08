@@ -1,7 +1,7 @@
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from schemas.parent import ParentCreate, ParentResponse, ParentUpdate
+from schemas.parent import ParentCreate, ParentResponse, ParentUpdate, ParentResponseMessage
 from crud.parent_crud import ParentCRUD
 from api.dependencies import require_roles
 from schemas.common_schemas import UserToken
@@ -24,10 +24,11 @@ def read_parent(parent_id: int
     return parent
 
 
-@router.post("/", response_model=ParentResponse)
+@router.post("/", response_model=ParentResponseMessage)
 def create_new_parent(parent: ParentCreate, current_user: UserToken = Depends(require_roles("admin"))):
     parent_crud = ParentCRUD(current_user.tenant_id)
-    return parent_crud.create(parent)
+    parent = parent_crud.create(parent)
+    return {"id":parent.id, "message": "Parent deleted successfully"}
 
 
 @router.put("/{parent_id}", response_model=ParentResponse)

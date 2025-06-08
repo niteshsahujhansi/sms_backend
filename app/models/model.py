@@ -22,8 +22,8 @@ class StudentParent(Base):
     parent_id = Column(Integer, ForeignKey("parents.id", ondelete="CASCADE"), nullable=False)
     relationship_type = Column(String, nullable=False)  # E.g., "Father", "Mother", "Guardian"
 
-    student = relationship("Student", back_populates="parent_associations")
-    parent = relationship("Parent", back_populates="student_associations")
+    student = relationship("Student", back_populates="parent_associations", lazy='selectin')
+    parent = relationship("Parent", back_populates="student_associations", lazy='selectin')
 
 
 class PersonAddress(Base):
@@ -36,9 +36,9 @@ class PersonAddress(Base):
     address_id = Column(Integer, ForeignKey("addresses.id"), nullable=False)
     address_type = Column(String, nullable=False)
 
-    address = relationship("Address", back_populates="persons")
-    parent = relationship("Parent", back_populates="addresses")
-    student = relationship("Student", back_populates="addresses")
+    address = relationship("Address", back_populates="persons", lazy='selectin')
+    parent = relationship("Parent", back_populates="addresses", lazy='selectin')
+    student = relationship("Student", back_populates="addresses", lazy='selectin')
 
 
 class Address(Base):
@@ -53,7 +53,7 @@ class Address(Base):
     zip_code = Column(String, nullable=False)
     country = Column(String, nullable=False)
 
-    persons = relationship("PersonAddress", back_populates="address")
+    persons = relationship("PersonAddress", back_populates="address", lazy='selectin')
 
 
 class Parent(Base):
@@ -92,10 +92,10 @@ class Parent(Base):
     preferred_language = Column(String, nullable=True)
     communication_preference = Column(String, nullable=True)
 
-    students = relationship("Student", secondary="student_parents", back_populates="parents", viewonly=True)
-    student_associations  = relationship("StudentParent", back_populates="parent")
+    students = relationship("Student", secondary="student_parents", back_populates="parents", viewonly=True, lazy='selectin')
+    student_associations  = relationship("StudentParent", back_populates="parent", lazy='selectin')
 
-    addresses = relationship("PersonAddress", back_populates="parent", cascade="all, delete-orphan")
+    addresses = relationship("PersonAddress", back_populates="parent", cascade="all, delete-orphan", lazy='selectin')
 
 
 class Student(Base):
@@ -145,10 +145,10 @@ class Student(Base):
     transport_details = relationship("TransportDetail", back_populates="student", uselist=False)
 
     # Relationship with parents via association table
-    parent_associations = relationship("StudentParent", back_populates="student", cascade="all, delete-orphan")
-    parents = relationship("Parent", secondary="student_parents", back_populates="students", viewonly=True)
+    parent_associations = relationship("StudentParent", back_populates="student", cascade="all, delete-orphan", lazy='selectin')
+    parents = relationship("Parent", secondary="student_parents", back_populates="students", viewonly=True, lazy='selectin')
 
-    addresses = relationship("PersonAddress", back_populates="student", cascade="all, delete-orphan")
+    addresses = relationship("PersonAddress", back_populates="student", cascade="all, delete-orphan", lazy='selectin')
 
 
 class MedicalDetail(Base):
