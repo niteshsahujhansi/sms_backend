@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from uuid import uuid4
 from typing import List
-from crud.upload_crud import UploadCRUD
+from services.upload_service import UploadService
 from schemas.upload import UploadCreate, UploadResponse, FileUploadRequest
 from utils.file_utils import save_and_get_metadata
 from utils.constants import FileCategoryEnum
@@ -17,7 +17,7 @@ async def upload_file(
     upload_data: FileUploadRequest = Depends(),
     current_user: UserToken = Depends(require_roles("admin"))
 ):
-    upload_crud = UploadCRUD(current_user.tenant_id)
+    upload_service = UploadService(current_user.tenant_id)
     file_category = upload_data.file_category
     related_entity_id = upload_data.related_entity_id
 
@@ -38,7 +38,7 @@ async def upload_file(
             is_active = True,
         )
 
-        uploaded = upload_crud.create_upload_record(upload_create)
+        uploaded = upload_service.create_upload_record(upload_create)
         uploaded_files.append(uploaded)
 
     return uploaded_files
