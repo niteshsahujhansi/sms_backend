@@ -30,21 +30,18 @@ class BaseService(Generic[ModelType, SchemaType]):
         else:
             raise ValueError(f"Tenant not found for tenant_id: {tenant_id}")
     
-    def validate_email(self, email: EmailStr, model: Type[ModelType] = None) -> None:
-        """Validate email format and uniqueness"""
-        if email is None:
-            return
-
+    def validate_email(self, email: str, exclude_id: int = None):
+        """
+        Check email uniqueness, excluding the current record if exclude_id is provided
+        """
         with self.sessionmaker() as session:
-            # Use the provided model or default to self.model
-            model_to_use = model or self.model
-            # Check if email already exists
-            existing_record = session.query(model_to_use).filter(model_to_use.email == email).first()
+            query = session.query(self.model).filter(self.model.email == email)
+            if exclude_id is not None:
+                query = query.filter(self.model.id != exclude_id)
+            existing_record = query.first()
+            
             if existing_record:
-                raise HTTPException(
-                    status_code=400,
-                    detail={"email": "Email already registered"}
-                )
+                raise HTTPException(status_code=400, detail="Email already registered")
         
     def get_all(self):
         with self.sessionmaker() as session:

@@ -88,9 +88,9 @@ class ParentService(BaseService[Parent, ParentCreate]):
                 # Get only the fields that are being updated
                 update_data = obj_in.model_dump(exclude_unset=True, exclude={"addresses"})
                 
-                # # If email is being updated, validate it
-                # if "email" in update_data:
-                #     self.validate_email(update_data["email"])
+                # If email is being updated, validate it
+                if "email" in update_data:
+                    self.validate_email(update_data["email"], exclude_id=parent_id)
 
                 # Update parent fields except addresses
                 for key, value in update_data.items():

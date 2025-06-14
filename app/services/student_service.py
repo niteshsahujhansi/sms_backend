@@ -129,9 +129,9 @@ class StudentService(BaseService[Student, StudentCreate]):
                 # Get only the fields that are being updated
                 update_data = obj_in.model_dump(exclude={"parent_data"}, exclude_unset=True)
                 
-                # # If email is being updated, validate it
-                # if "email" in update_data:
-                #     self.validate_email(update_data["email"])
+                # If email is being updated, validate it
+                if "email" in update_data:
+                    self.validate_email(update_data["email"], exclude_id=student_id)
 
                 # Update student fields except parent_data
                 for key, value in update_data.items():
