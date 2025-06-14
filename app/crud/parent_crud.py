@@ -4,14 +4,18 @@ from sqlalchemy.exc import IntegrityError
 from crud.base_crud import CRUDBase
 from models.model import Parent, PersonAddress, Address
 from schemas.parent import ParentCreate, ParentUpdate
-from typing import List
+from typing import List, Optional
+from pydantic import EmailStr
 
 class ParentCRUD(CRUDBase[Parent, ParentCreate]):
     def __init__(self, tenant_id: str):
         super().__init__(Parent, tenant_id)
-
+    
     def create(self, obj_in: ParentCreate):
         try:
+            # Validate email before proceeding
+            self.validate_email(obj_in.email)
+            
             with self.sessionmaker() as session:
                 # Extract addresses from input
                 address_data = obj_in.addresses

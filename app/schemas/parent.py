@@ -1,7 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field 
 from uuid import UUID
-
-from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import date
 
@@ -20,7 +18,7 @@ class ParentBase(CamelCaseModel):
     caste_category: Optional[str] = None
 
     phone: Optional[str] = None
-    email: Optional[str] = None
+    email: Optional[EmailStr] = None  # Using EmailStr for validation
     emergency_contact_name: Optional[str] = None
     emergency_contact_phone: Optional[str] = None
     emergency_contact_relationship: Optional[str] = None
@@ -34,7 +32,6 @@ class ParentBase(CamelCaseModel):
     passport_number: Optional[str] = None
     driving_license_number: Optional[str] = None
     PAN_number: Optional[str] = None
-    annual_income: Optional[str] = None
 
     # photo: Optional[str] = None
     notes: Optional[str] = None

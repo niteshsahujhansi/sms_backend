@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm import sessionmaker, selectinload
 from sqlalchemy.exc import IntegrityError
 from typing import TypeVar, Generic, Type
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
+from fastapi import HTTPException
 from core.database import Base, get_central_db, custom_create_engine
 from models.model import Tenant_db_Master
 
@@ -29,10 +30,25 @@ class CRUDBase(Generic[ModelType, SchemaType]):
         else:
             raise ValueError(f"Tenant not found for tenant_id: {tenant_id}")
         
+    def validate_email(self, email: EmailStr, model: Type[ModelType] = None) -> None:
+        """Validate email format and uniqueness"""
+        if email is None:
+            return
+
+        with self.sessionmaker() as session:
+            # Use the provided model or default to self.model
+            model_to_use = model or self.model
+            # Check if email already exists
+            existing_record = session.query(model_to_use).filter(model_to_use.email == email).first()
+            if existing_record:
+                raise HTTPException(
+                    status_code=400,
+                    detail={"email": "Email already registered"}
+                )
+        
     def get_all(self):
         with self.sessionmaker() as session:
             return session.query(self.model).all()
-
 
     def get_by_id(self, obj_id: int):
         with self.sessionmaker() as session:

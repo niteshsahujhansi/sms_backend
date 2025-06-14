@@ -25,10 +25,12 @@ def read_parent(parent_id: int
 
 
 @router.post("/", response_model=ParentResponseMessage)
+# @router.post("/", response_model=ParentResponse)
 def create_new_parent(parent: ParentCreate, current_user: UserToken = Depends(require_roles("admin"))):
     parent_crud = ParentCRUD(current_user.tenant_id)
     parent = parent_crud.create(parent)
-    return {"id":parent.id, "message": "Parent deleted successfully"}
+    # return parent
+    return {"id":parent.id, "message": "Parent created successfully"}
 
 
 @router.put("/{parent_id}", response_model=ParentResponse)

@@ -141,8 +141,8 @@ class Student(Base):
     parent_photo = Column(String, nullable=True)  # Will store file path
     
     # Relationships
-    medical_details = relationship("MedicalDetail", back_populates="student", uselist=False)
-    transport_details = relationship("TransportDetail", back_populates="student", uselist=False)
+    medical_details = relationship("MedicalDetail", back_populates="student", uselist=False, lazy='selectin')
+    transport_details = relationship("TransportDetail", back_populates="student", uselist=False, lazy='selectin')
 
     # Relationship with parents via association table
     parent_associations = relationship("StudentParent", back_populates="student", cascade="all, delete-orphan", lazy='selectin')
@@ -162,7 +162,7 @@ class MedicalDetail(Base):
     doctor_contact = Column(String, nullable=True)
     health_insurance_details = Column(String, nullable=True)
 
-    student = relationship("Student", back_populates="medical_details")
+    student = relationship("Student", back_populates="medical_details", lazy='selectin')
 
 
 class TransportDetail(Base):
@@ -177,7 +177,7 @@ class TransportDetail(Base):
     pickup_location = Column(String, nullable=True)
     bus_route_number = Column(String, nullable=True)
 
-    student = relationship("Student", back_populates="transport_details")
+    student = relationship("Student", back_populates="transport_details", lazy='selectin')
 
 
 class Upload(Base):

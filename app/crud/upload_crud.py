@@ -3,19 +3,23 @@ from schemas.upload import UploadCreate
 from crud.base_crud import CRUDBase
 from models.model import Upload
 from sqlalchemy.exc import SQLAlchemyError
+from fastapi import HTTPException
 
 class UploadCRUD(CRUDBase[Upload, UploadCreate]):
-    def __init__(self, db: Session):
-        super().__init__(Upload, db)
+    def __init__(self, tenant_id: str):
+        super().__init__(Upload, tenant_id)
         
     def create_upload_record(self, obj_in: UploadCreate):
         try:
-            file_record = Upload(**obj_in.model_dump())
-            self.session.add(file_record)
-            self.session.commit()
-            self.session.refresh(file_record)
-            return file_record
+            with self.sessionmaker() as session:
+                file_record = Upload(**obj_in.model_dump())
+                session.add(file_record)
+                session.commit()
+                session.refresh(file_record)
+                return file_record
         except SQLAlchemyError as e:
-            self.session.rollback()  # Rollback the transaction
-            raise Exception(f"Error creating upload record: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error creating upload record: {str(e)}"
+            )
 
