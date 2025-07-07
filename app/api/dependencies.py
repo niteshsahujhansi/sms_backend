@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Optional
 from models.model import UserMaster
 from schemas.common_schemas import UserToken
-from crud.base_crud import CRUDBase
+from services.base_service import BaseService
 from utils.security import verify_access_token
 
 # def get_user_master_crud():
@@ -21,7 +21,7 @@ async def get_current_user(access_token: Optional[str] = Cookie(None)) -> UserTo
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token missing subject (sub)")
 
-    user_master_crud = CRUDBase(UserMaster)
+    user_master_crud = BaseService(UserMaster)
     user = user_master_crud.get_by_id(obj_id=user_id)
     # user = db.query(UserMaster).filter(UserMaster.id == user_id).first()
     if not user:

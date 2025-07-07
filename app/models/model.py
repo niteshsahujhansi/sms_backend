@@ -2,7 +2,7 @@ from core.database import Base
 import uuid
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 
-from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, Text, JSON, Enum, BigInteger, text
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, Text, JSON, Enum, BigInteger, text, Float
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import List, Optional
@@ -32,13 +32,14 @@ class PersonAddress(Base):
     id = Column(Integer, primary_key=True, index=True , autoincrement=True)
     parent_id = Column(Integer, ForeignKey("parents.id"), nullable=True)
     student_id = Column(Integer, ForeignKey("students.id"), nullable=True)
-    # address_id = Column(Integer, ForeignKey("addresses.id"), primary_key=True)
+    teacher_id = Column(UUID(as_uuid=True), ForeignKey("teachers.id"), nullable=True)
     address_id = Column(Integer, ForeignKey("addresses.id"), nullable=False)
     address_type = Column(String, nullable=False)
 
     address = relationship("Address", back_populates="persons", lazy='selectin')
     parent = relationship("Parent", back_populates="addresses", lazy='selectin')
     student = relationship("Student", back_populates="addresses", lazy='selectin')
+    teacher = relationship("Teacher", back_populates="addresses", lazy='selectin')
 
 
 class Address(Base):
@@ -149,6 +150,11 @@ class Student(Base):
     parents = relationship("Parent", secondary="student_parents", back_populates="students", viewonly=True, lazy='selectin')
 
     addresses = relationship("PersonAddress", back_populates="student", cascade="all, delete-orphan", lazy='selectin')
+
+    # --- Classes and Subjects ---
+
+    class_associations = relationship("ClassStudent", back_populates="student", cascade="all, delete-orphan", lazy='selectin')
+    classes = relationship("Class", secondary="class_students", back_populates="students", viewonly=True, lazy='selectin')
 
 
 class MedicalDetail(Base):
@@ -261,3 +267,166 @@ class UserMaster(Base):
     created_by = mapped_column(String(512))
     updated_at = mapped_column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
     updated_by = mapped_column(String(512))
+
+
+class Teacher(Base):
+    __tablename__ = "teachers"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.uuid_generate_v4(), index=True, nullable=False)
+    
+    # Personal Information
+    first_name = Column(String, nullable=False)
+    middle_name = Column(String, nullable=True)
+    last_name = Column(String, nullable=True)
+    date_of_birth = Column(Date, nullable=True)
+    gender = Column(String, nullable=True)
+    blood_group = Column(String, nullable=True)
+    nationality = Column(String, nullable=True)
+    religion = Column(String, nullable=True)
+    
+    # Contact Information
+    phone = Column(String, nullable=True)
+    email = Column(String, unique=True, nullable=False)
+    emergency_contact_name = Column(String, nullable=True)
+    emergency_contact_phone = Column(String, nullable=True)
+    emergency_contact_relationship = Column(String, nullable=True)
+    
+    # Professional Information
+    employee_id = Column(String, nullable=False)
+    # employee_id = Column(String, unique=True, nullable=False)
+    joining_date = Column(Date, nullable=False)
+    qualifications = Column(ARRAY(String), nullable=False)
+    specializations = Column(ARRAY(String), nullable=True)
+    experience_years = Column(Integer, nullable=True)
+    previous_schools = Column(String, nullable=True)
+    designation = Column(String, nullable=True)
+    department = Column(String, nullable=True)
+    teaching_subjects = Column(ARRAY(String), nullable=True)
+    preferred_grades = Column(ARRAY(String), nullable=True)
+    
+    # Documents
+    photo = Column(String, nullable=True)
+    resume = Column(String, nullable=True)
+    qualification_certificates = Column(ARRAY(String), nullable=True)
+    experience_certificates = Column(ARRAY(String), nullable=True)
+    id_proof = Column(String, nullable=True)
+    address_proof = Column(String, nullable=True)
+    aadhaar_number = Column(String, nullable=True)
+    pan_number = Column(String, nullable=True)
+    
+    # Additional Information
+    preferred_language = Column(String, nullable=True)
+    communication_preference = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+    
+    # Status
+    is_active = Column(Boolean, default=True)
+    is_deleted = Column(Boolean, default=False)
+    
+    # Timestamps
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    addresses = relationship("PersonAddress", back_populates="teacher", cascade="all, delete-orphan", lazy='selectin')
+    class_teacher_for = relationship("Class", back_populates="class_teacher", lazy='selectin')
+    subject_associations = relationship("SubjectTeacher", back_populates="teacher", cascade="all, delete-orphan", lazy='selectin')
+    subjects = relationship("Subject", secondary="subject_teachers", back_populates="teachers", viewonly=True, lazy='selectin')
+
+    # def __repr__(self):
+    #     return f"<Teacher {self.first_name} {self.last_name}>"
+
+# --- Classes and Subjects (with extended columns) ---
+
+class Class(Base):
+    __tablename__ = "classes"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)  # e.g., "Class 1"
+    section = Column(String, nullable=True)  # e.g., "A"
+    academic_year = Column(String, nullable=True)  # e.g., "2024-2025"
+    class_teacher_id = Column(UUID(as_uuid=True), ForeignKey("teachers.id"), nullable=True)
+    room_number = Column(String, nullable=True)
+    max_students = Column(Integer, nullable=True)
+    description = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+    class_teacher = relationship("Teacher", back_populates="class_teacher_for", lazy='selectin')
+    student_associations = relationship("ClassStudent", back_populates="klass", cascade="all, delete-orphan", lazy='selectin')
+    students = relationship("Student", secondary="class_students", back_populates="classes", viewonly=True, lazy='selectin')
+    subject_associations = relationship("ClassSubject", back_populates="klass", cascade="all, delete-orphan", lazy='selectin')
+    subjects = relationship("Subject", secondary="class_subjects", back_populates="classes", viewonly=True, lazy='selectin')
+
+class Subject(Base):
+    __tablename__ = "subjects"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)  # e.g., "Mathematics"
+    code = Column(String, nullable=True)   # e.g., "MATH101"
+    description = Column(Text, nullable=True)
+    syllabus = Column(Text, nullable=True)
+    credits = Column(Integer, nullable=True)
+    is_elective = Column(Boolean, default=False)
+    subject_type = Column(String, nullable=True)  # core/elective/lab/practical
+    max_marks = Column(Integer, nullable=True)
+    department = Column(String, nullable=True)
+    language = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+    class_associations = relationship("ClassSubject", back_populates="subject", cascade="all, delete-orphan", lazy='selectin')
+    classes = relationship("Class", secondary="class_subjects", back_populates="subjects", viewonly=True, lazy='selectin')
+    teacher_associations = relationship("SubjectTeacher", back_populates="subject", cascade="all, delete-orphan", lazy='selectin')
+    teachers = relationship("Teacher", secondary="subject_teachers", back_populates="subjects", viewonly=True, lazy='selectin')
+
+class ClassStudent(Base):
+    __tablename__ = "class_students"
+    id = Column(Integer, primary_key=True, index=True)
+    class_id = Column(Integer, ForeignKey("classes.id", ondelete="CASCADE"), nullable=False)
+    student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
+    enrollment_date = Column(Date, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+    student = relationship("Student", back_populates="class_associations", lazy='selectin')
+    klass = relationship("Class", back_populates="student_associations", lazy='selectin')
+
+class ClassSubject(Base):
+    __tablename__ = "class_subjects"
+    id = Column(Integer, primary_key=True, index=True)
+    class_id = Column(Integer, ForeignKey("classes.id", ondelete="CASCADE"), nullable=False)
+    subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
+    assigned_date = Column(Date, nullable=True)
+    is_optional = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+    klass = relationship("Class", back_populates="subject_associations", lazy='selectin')
+    subject = relationship("Subject", back_populates="class_associations", lazy='selectin')
+
+class SubjectTeacher(Base):
+    __tablename__ = "subject_teachers"
+    id = Column(Integer, primary_key=True, index=True)
+    subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
+    teacher_id = Column(UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE"), nullable=False)
+    assigned_date = Column(Date, nullable=True)
+    is_primary = Column(Boolean, default=False)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+
+    subject = relationship("Subject", back_populates="teacher_associations", lazy='selectin')
+    teacher = relationship("Teacher", back_populates="subject_associations", lazy='selectin')
