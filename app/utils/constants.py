@@ -112,3 +112,19 @@ class RoleEnum(str, Enum):
     admin = "admin"
     teacher = "teacher"
     student = "student"
+
+class DayOfWeekEnum(str, Enum):
+    monday = "Monday"
+    tuesday = "Tuesday"
+    wednesday = "Wednesday"
+    thursday = "Thursday"
+    friday = "Friday"
+    saturday = "Saturday"
+    sunday = "Sunday"
+
+class EventTypeEnum(str, Enum):
+    regular = "Regular"
+    exam = "Exam"
+    assembly = "Assembly"
+    holiday = "Holiday"
+    special = "Special"

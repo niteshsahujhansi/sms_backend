@@ -2,12 +2,13 @@ from core.database import Base
 import uuid
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 
-from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, Text, JSON, Enum, BigInteger, text, Float
+from sqlalchemy import Column, Integer, String, Date, DateTime, ForeignKey, Boolean, Text, JSON, Enum, BigInteger, text, Float, Time, Enum as SAEnum
+import enum
 
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from typing import List, Optional
 from sqlalchemy.sql import func
-from utils.constants import RelatedEntityEnum, FileCategoryEnum, FileTypeEnum, UserRoleEnum, FileStatusEnum, VirusScanStatusEnum
+from utils.constants import RelatedEntityEnum, FileCategoryEnum, FileTypeEnum, UserRoleEnum, FileStatusEnum, VirusScanStatusEnum, DayOfWeekEnum, EventTypeEnum
 
 
 # Enum for Gender / Blood Group / Caste:
@@ -329,7 +330,6 @@ class Teacher(Base):
     
     # Relationships
     addresses = relationship("PersonAddress", back_populates="teacher", cascade="all, delete-orphan", lazy='selectin')
-    class_teacher_for = relationship("Class", back_populates="class_teacher", lazy='selectin')
     subject_associations = relationship("SubjectTeacher", back_populates="teacher", cascade="all, delete-orphan", lazy='selectin')
     subjects = relationship("Subject", secondary="subject_teachers", back_populates="teachers", viewonly=True, lazy='selectin')
 
@@ -340,13 +340,14 @@ class Teacher(Base):
 
 class Class(Base):
     __tablename__ = "classes"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.uuid_generate_v4(), index=True, nullable=False)
     name = Column(String, nullable=False)  # e.g., "Class 1"
     section = Column(String, nullable=True)  # e.g., "A"
     academic_year = Column(String, nullable=True)  # e.g., "2024-2025"
-    class_teacher_id = Column(UUID(as_uuid=True), ForeignKey("teachers.id"), nullable=True)
     room_number = Column(String, nullable=True)
     max_students = Column(Integer, nullable=True)
+    total_periods = Column(Integer, nullable=False, default=8)  # Total number of periods per day
+    period_times = Column(JSONB, nullable=True)  # New field for period timetable
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
@@ -354,7 +355,6 @@ class Class(Base):
     created_by = Column(String, nullable=True)
     updated_by = Column(String, nullable=True)
 
-    class_teacher = relationship("Teacher", back_populates="class_teacher_for", lazy='selectin')
     student_associations = relationship("ClassStudent", back_populates="klass", cascade="all, delete-orphan", lazy='selectin')
     students = relationship("Student", secondary="class_students", back_populates="classes", viewonly=True, lazy='selectin')
     subject_associations = relationship("ClassSubject", back_populates="klass", cascade="all, delete-orphan", lazy='selectin')
@@ -362,7 +362,7 @@ class Class(Base):
 
 class Subject(Base):
     __tablename__ = "subjects"
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.uuid_generate_v4(), index=True, nullable=False)
     name = Column(String, nullable=False)  # e.g., "Mathematics"
     code = Column(String, nullable=True)   # e.g., "MATH101"
     description = Column(Text, nullable=True)
@@ -387,7 +387,7 @@ class Subject(Base):
 class ClassStudent(Base):
     __tablename__ = "class_students"
     id = Column(Integer, primary_key=True, index=True)
-    class_id = Column(Integer, ForeignKey("classes.id", ondelete="CASCADE"), nullable=False)
+    class_id = Column(UUID(as_uuid=True), ForeignKey("classes.id", ondelete="CASCADE"), nullable=False)
     student_id = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"), nullable=False)
     enrollment_date = Column(Date, nullable=True)
     is_active = Column(Boolean, default=True)
@@ -402,8 +402,8 @@ class ClassStudent(Base):
 class ClassSubject(Base):
     __tablename__ = "class_subjects"
     id = Column(Integer, primary_key=True, index=True)
-    class_id = Column(Integer, ForeignKey("classes.id", ondelete="CASCADE"), nullable=False)
-    subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
+    class_id = Column(UUID(as_uuid=True), ForeignKey("classes.id", ondelete="CASCADE"), nullable=False)
+    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
     assigned_date = Column(Date, nullable=True)
     is_optional = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
@@ -418,7 +418,7 @@ class ClassSubject(Base):
 class SubjectTeacher(Base):
     __tablename__ = "subject_teachers"
     id = Column(Integer, primary_key=True, index=True)
-    subject_id = Column(Integer, ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
+    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id", ondelete="CASCADE"), nullable=False)
     teacher_id = Column(UUID(as_uuid=True), ForeignKey("teachers.id", ondelete="CASCADE"), nullable=False)
     assigned_date = Column(Date, nullable=True)
     is_primary = Column(Boolean, default=False)
@@ -430,3 +430,34 @@ class SubjectTeacher(Base):
 
     subject = relationship("Subject", back_populates="teacher_associations", lazy='selectin')
     teacher = relationship("Teacher", back_populates="subject_associations", lazy='selectin')
+
+class Schedule(Base):
+    __tablename__ = "schedules"
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.uuid_generate_v4(), index=True, nullable=False)
+    class_id = Column(UUID(as_uuid=True), ForeignKey("classes.id"), nullable=False)
+    day_of_week = Column(SAEnum(DayOfWeekEnum), nullable=False)
+    period_number = Column(Integer, nullable=False)
+    subject_id = Column(UUID(as_uuid=True), ForeignKey("subjects.id"), nullable=False)
+    teacher_id = Column(UUID(as_uuid=True), ForeignKey("teachers.id"), nullable=False)
+    room = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+    created_by = Column(String, nullable=True)
+    updated_by = Column(String, nullable=True)
+    
+    # Advanced/Enterprise fields
+    co_teacher_id = Column(UUID(as_uuid=True), ForeignKey("teachers.id"), nullable=True)
+    substitute_teacher_id = Column(UUID(as_uuid=True), ForeignKey("teachers.id"), nullable=True)
+
+    # Integration/automation fields
+    attendance_taken = Column(Boolean, default=False)
+    notification_sent = Column(Boolean, default=False)
+    online_link = Column(String, nullable=True)
+
+    # Relationships (optional, for easy joins)
+    klass = relationship("Class", lazy='selectin')
+    subject = relationship("Subject", lazy='selectin')
+    teacher = relationship("Teacher", foreign_keys=[teacher_id], lazy='selectin')
+    co_teacher = relationship("Teacher", foreign_keys=[co_teacher_id], lazy='selectin')
+    substitute_teacher = relationship("Teacher", foreign_keys=[substitute_teacher_id], lazy='selectin')

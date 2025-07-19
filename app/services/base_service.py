@@ -14,6 +14,7 @@ SchemaType = TypeVar("SchemaType", bound=BaseModel)
 class BaseService(Generic[ModelType, SchemaType]):
     def __init__(self, model: Type[ModelType], tenant_id: str = None):
         self.model = model
+        self.tenant_id = tenant_id  # Store tenant_id for use in subclasses
         if tenant_id:
             db = self.__get_tenant_db(tenant_id=tenant_id)
         else:
