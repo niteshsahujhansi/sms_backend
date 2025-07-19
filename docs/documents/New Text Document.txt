@@ -1,0 +1,80 @@
+class id
+42c3a024-5112-48e7-9213-0175c37d078b
+
+subject id
+ff353b92-b6ff-4af9-b60a-383100ffc91f
+
+teacher id
+f5e6cd84-3e6c-4244-9b54-5221a437144f
+
+{
+  "class_id": "42c3a024-5112-48e7-9213-0175c37d078b",
+  "day_of_week": "Monday",
+  "period_number": 0,
+  "start_time": "05:24:39.426Z",
+  "end_time": "05:24:39.426Z",
+  "subject_id": "ff353b92-b6ff-4af9-b60a-383100ffc91f",
+  "teacher_id": "f5e6cd84-3e6c-4244-9b54-5221a437144f",
+  "room": "string",
+  "attendance_taken": false,
+  "notification_sent": false,
+  "online_link": "string"
+}
+
+schedule id
+db9724c5-0124-469a-aea2-925ec2fdead7
+
+
+
+
+
+
+
+
+
+
+1. Bulk Operations
+Bulk Create/Update Schedules:
+Allow admins to upload or submit multiple schedule entries at once (e.g., for an entire week or term).
+Bulk Delete:
+Remove all schedules for a class, teacher, or date range.
+
+2. Query/Filter APIs
+Get Timetable for a Class:
+Return the full weekly timetable for a given class (grouped by day/period).
+Get Timetable for a Teacher:
+Return all periods assigned to a specific teacher (across all classes).
+Get Timetable for a Student:
+(If students have personalized schedules, or to show their class’s timetable.)
+
+3. Specialized Views
+Get Free Periods/Available Rooms:
+Find available rooms or free periods for a class/teacher.
+Get Substitute Teacher Suggestions:
+List available teachers for a given period (for substitution).
+
+4. Schedule Management
+Copy/Clone Schedule:
+Copy a schedule from one class/term to another (useful for new academic years).
+Lock/Publish Schedule:
+Mark a schedule as “final” or “published” so it’s visible to students/parents.
+
+5. Event/Exception Handling
+Add/Remove Special Events:
+Insert holidays, exams, or special events into the timetable.
+Override/Reschedule Period:
+Temporarily change a period for a specific date (e.g., for a school event).
+
+6. Notifications/Reminders
+Send Schedule Notifications:
+Trigger notifications to students/teachers about schedule changes.
+Example API Endpoints
+Endpoint	Description
+POST /schedules/bulk	Bulk create/update schedules
+GET /schedules/class/{class_id}/timetable	Get full timetable for a class
+GET /schedules/teacher/{teacher_id}/timetable	Get all periods for a teacher
+GET /schedules/room/available	Get available rooms for a time slot
+POST /schedules/copy	Copy/clone a schedule
+POST /schedules/event	Add a special event to the schedule
+POST /schedules/notify	Send schedule notifications
+
